@@ -1,5 +1,8 @@
 package com.epam.izh.rd.online.service;
 
+import com.epam.izh.rd.online.exception.NotAccessException;
+import com.epam.izh.rd.online.exception.SimplePasswordException;
+import com.epam.izh.rd.online.exception.UserAlreadyRegisteredException;
 import com.epam.izh.rd.online.entity.User;
 import com.epam.izh.rd.online.repository.IUserRepository;
 import com.epam.izh.rd.online.repository.UserRepository;
@@ -30,14 +33,27 @@ public class UserService implements IUserService {
      * @param user - даныне регистрирующегося пользователя
      */
     @Override
-    public User register(User user) {
-
-        //
-        // Здесь необходимо реализовать перечисленные выше проверки
-        //
-
-        // Если все проверки успешно пройдены, сохраняем пользователя в базу
-        return userRepository.save(user);
+    public User register(User user) throws UserAlreadyRegisteredException, SimplePasswordException {
+        if (user == null) {
+            throw new IllegalArgumentException("User is null");
+        } else {
+            String userLogin = user.getLogin();
+            String userPassword = user.getPassword();
+            if (userLogin == null || userPassword == null
+                    || userLogin.equals("") || userPassword.equals("")) {
+                throw new IllegalArgumentException("Ошибка в заполнении полей");
+            }
+            if (userRepository.findByLogin(userLogin) != null) {
+                throw new UserAlreadyRegisteredException("Пользователь с логином '"
+                        + userLogin + "' уже зарегистрирован");
+            }
+            if (userPassword.matches("\\d+")) {
+                throw new SimplePasswordException("Пароль не соответствует" +
+                        " требованиям безопасности");
+            }
+            // Если все проверки успешно пройдены, сохраняем пользователя в базу
+            return userRepository.save(user);
+        }
     }
 
     /**
@@ -58,14 +74,12 @@ public class UserService implements IUserService {
      *
      * @param login
      */
-    public void delete(String login) {
-
-        // Здесь необходимо сделать доработку метод
-
+    public void delete(String login) throws NotAccessException {
+        try {
             userRepository.deleteByLogin(login);
-
-        // Здесь необходимо сделать доработку метода
-
+        } catch (UnsupportedOperationException uoException) {
+            throw new NotAccessException("Недостаточно прав для выполнения операции", uoException);
+        }
     }
 
 }
